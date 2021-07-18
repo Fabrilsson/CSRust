@@ -9,6 +9,6 @@ use pest::Parser;
 pub struct CSParser;
 
 fn main() {
-    let successful_parse = CSParser::parse(Rule::code, "if (asdasd > asdasd)");
+    let successful_parse = CSParser::parse(Rule::main, "public main () { if (asdasd > asdasd) }");
     println!("{:?}", successful_parse);
 }

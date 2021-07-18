@@ -1,6 +1,7 @@
 WHITESPACE = _{ " " }
 
-
+public_key_word = {"public"}
+main = _{public_key_word ~ "main () {" ~ code ~ "}"}
 if_exp = {"if (" ~ (math_exp | bool_exp)+ ~ ")"}
 math_exp = {((number | identifier) ~ math_op ~ (number | identifier))+ ~ (bool_exp)* ~ (math_exp)*}
 bool_exp = {(identifier ~ bool_op ~ identifier)+ ~ math_exp* ~ bool_exp*}
@@ -8,4 +9,4 @@ number = {(ASCII_DIGIT | "." | "-")+}
 identifier = {(ASCII_ALPHA)+ ~ (ASCII_DIGIT | ASCII_ALPHA)*}
 math_op = {">" | ">=" | "<" | "<=" | "!=" | "=="}
 bool_op = {"&&" | "||"}
-code = _{if_exp}
+code = {if_exp+}
