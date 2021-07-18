@@ -1,3 +1,14 @@
+extern crate pest;
+#[macro_use]
+extern crate pest_derive;
+
+use pest::Parser;
+
+#[derive(Parser)]
+#[grammar = "CS.pest"]
+pub struct CSParser;
+
 fn main() {
-    println!("Hello, world!");
+    let successful_parse = CSParser::parse(Rule::code, "if (asdasd > asdasd)");
+    println!("{:?}", successful_parse);
 }
