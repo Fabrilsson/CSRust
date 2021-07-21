@@ -1,7 +1,12 @@
 WHITESPACE = _{ " " }
 
 public_key_word = {"public"}
-main = _{public_key_word ~ "main () {" ~ code ~ "}"}
+main_key_work = {"main"}
+left_parenthesis = {"("}
+right_parenthesis = {")"}
+left_bracers = {"{"}
+right_bracers = {"}"}
+main = {public_key_word ~ main_key_work ~ left_parenthesis ~ right_parenthesis ~ left_bracers ~ code ~ right_bracers}
 if_exp = {"if (" ~ (math_exp | bool_exp)+ ~ ")"}
 math_exp = {((number | identifier) ~ math_op ~ (number | identifier))+ ~ (bool_exp)* ~ (math_exp)*}
 bool_exp = {(identifier ~ bool_op ~ identifier)+ ~ math_exp* ~ bool_exp*}
