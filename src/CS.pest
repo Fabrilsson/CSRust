@@ -1,17 +1,32 @@
 WHITESPACE = _{ " " }
 
+using_key_work = {"using"}
+namespace_key_work = {"namespace"}
 public_key_word = {"public"}
-main_key_work = {"main"}
+class_key_word = {"class"}
+main_key_word = {"main"}
 left_parenthesis = {"("}
 right_parenthesis = {")"}
 left_bracers = {"{"}
 right_bracers = {"}"}
-main = {public_key_word ~ main_key_work ~ left_parenthesis ~ right_parenthesis ~ left_bracers ~ code ~ right_bracers}
+semicolon = {";"}
+main = {using_code_block* ~ namespace_code_block+}
+using_code_block = {using_key_work ~ identifier ~ ("." ~ identifier)* ~ semicolon}
+attribute = {"[" ~ identifier ~ (left_parenthesis ~ (string | number) ~ right_parenthesis)? ~ "]"}
+namespace_code_block = {namespace_key_work ~ identifier ~ ("." ~ identifier)* ~ left_bracers ~ class_code ~ right_bracers}
 if_exp = {"if (" ~ (math_exp | bool_exp)+ ~ ")"}
 math_exp = {((number | identifier) ~ math_op ~ (number | identifier))+ ~ (bool_exp)* ~ (math_exp)*}
 bool_exp = {(identifier ~ bool_op ~ identifier)+ ~ math_exp* ~ bool_exp*}
 number = {(ASCII_DIGIT | "." | "-")+}
+string = ${ "\"" ~ inner ~ "\"" }
+inner = @{ char* }
+char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
 identifier = {(ASCII_ALPHA)+ ~ (ASCII_DIGIT | ASCII_ALPHA)*}
 math_op = {">" | ">=" | "<" | "<=" | "!=" | "=="}
 bool_op = {"&&" | "||"}
 code = {if_exp+}
+class_code = {attribute* ~ public_key_word ~ main_key_word ~ left_parenthesis ~ right_parenthesis ~ left_bracers ~ code ~ right_bracers}
