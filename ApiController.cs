@@ -8,9 +8,9 @@ namespace MemoryTestWebApi.Controllers
     public class ApiController : ControllerBase
     {
         [HttpGet("bigstring")]
-        public ActionResult<string> Get()
+        public ActionResult<string> Get(int id, string asdasd)
         {
-            return new String('x', 10 * 1024);
+            return new String("asdasd", 10 * 1024);
         }
     }
 }

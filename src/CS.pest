@@ -5,6 +5,10 @@ namespace_key_work = {"namespace"}
 public_key_word = {"public"}
 class_key_word = {"class"}
 main_key_word = {"main"}
+string_key_word = {"string"}
+int_key_word = {"int"}
+return_key_word = {"return"}
+new_key_word = {"new"}
 left_parenthesis = {"("}
 right_parenthesis = {")"}
 left_bracers = {"{"}
@@ -26,7 +30,14 @@ char = {
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 identifier = {(ASCII_ALPHA)+ ~ (ASCII_DIGIT | ASCII_ALPHA)*}
-math_op = {">" | ">=" | "<" | "<=" | "!=" | "=="}
+math_op = {">" | ">=" | "<" | "<=" | "!=" | "==" | "*"}
 bool_op = {"&&" | "||"}
-code = {if_exp+}
-class_code = {attribute* ~ public_key_word ~ main_key_word ~ left_parenthesis ~ right_parenthesis ~ left_bracers ~ code ~ right_bracers}
+new_instance = {identifier ~ left_parenthesis ~ parameters ~ right_parenthesis ~ semicolon}
+code = {if_exp? ~ return_key_word ~ new_key_word? ~ new_instance}
+return_type = {"ActionResult" ~ "<" ~ (string_key_word | int_key_word | identifier) ~ ">"}
+parameter = {(string | identifier | math_exp)}
+parameters = {(parameter ~ (",")?)+}
+action_parameter = {(string_key_word | int_key_word | identifier) ~ identifier}
+action_parameters = {(action_parameter ~ (",")?)+}
+action = {attribute? ~ public_key_word ~ return_type ~ identifier ~ left_parenthesis ~ action_parameters* ~ right_parenthesis ~ left_bracers ~ code ~ right_bracers}
+class_code = {attribute* ~ public_key_word ~ class_key_word ~ identifier ~ (":" ~ identifier)? ~ left_bracers ~ action ~ right_bracers}
