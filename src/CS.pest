@@ -1,4 +1,4 @@
-WHITESPACE = _{ " " }
+WHITESPACE = _{ " " | "\t" | "\n" | "\r"}
 
 using_key_work = {"using"}
 namespace_key_work = {"namespace"}

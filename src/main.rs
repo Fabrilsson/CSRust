@@ -13,10 +13,7 @@ fn main() {
     let contents = fs::read_to_string("ApiController.cs")
     .expect("Something went wrong reading the file");
 
-    let mut asdasd = contents.replace("\u{feff}", "");
-
-    asdasd = asdasd.replace("\n", "");
-    asdasd = asdasd.replace("\r", "");
+    let asdasd = contents.replace("\u{feff}", "");
 
     println!("With text:\n{}", contents);
 
