@@ -1,7 +1,7 @@
 WHITESPACE = _{ " " | "\t" | "\n" | "\r"}
 
 using_key_work = {"using"}
-namespace_key_work = {"namespace"}
+namespace_key_word = {"namespace"}
 public_key_word = {"public"}
 class_key_word = {"class"}
 main_key_word = {"main"}
@@ -17,7 +17,7 @@ semicolon = {";"}
 main = {using_code_block* ~ namespace_code_block+}
 using_code_block = {using_key_work ~ identifier ~ ("." ~ identifier)* ~ semicolon}
 attribute = {"[" ~ identifier ~ (left_parenthesis ~ (string | number) ~ right_parenthesis)? ~ "]"}
-namespace_code_block = {namespace_key_work ~ identifier ~ ("." ~ identifier)* ~ left_bracers ~ class_code ~ right_bracers}
+namespace_code_block = {namespace_key_word ~ identifier ~ ("." ~ identifier)* ~ left_bracers ~ class_code ~ right_bracers}
 if_exp = {"if (" ~ (math_exp | bool_exp)+ ~ ")"}
 math_exp = {((number | identifier) ~ math_op ~ (number | identifier))+ ~ (bool_exp)* ~ (math_exp)*}
 bool_exp = {(identifier ~ bool_op ~ identifier)+ ~ math_exp* ~ bool_exp*}
