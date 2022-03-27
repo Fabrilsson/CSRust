@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MemoryTestWebApi.Controllers
@@ -8,7 +9,7 @@ namespace MemoryTestWebApi.Controllers
     public class ApiController : ControllerBase
     {
         [HttpGet("bigstring")]
-        public ActionResult<string> Get(int id, string asdasd)
+        public async Task<ActionResult<string>> Get(int id, string asdasd)
         {
             return new String("asdasd", 10 * 1024);
         }
