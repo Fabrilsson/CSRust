@@ -3,13 +3,20 @@ WHITESPACE = _{ " " | "\t" | "\n" | "\r"}
 using_key_work = {"using"}
 namespace_key_word = {"namespace"}
 public_key_word = {"public"}
+private_key_word = {"private"}
+readonly_key_word = {"readonly"}
 async_key_word = {"async"}
 class_key_word = {"class"}
 main_key_word = {"main"}
 string_key_word = {"string"}
+decimal_key_word = {"decimal"}
 int_key_word = {"int"}
 return_key_word = {"return"}
 new_key_word = {"new"}
+var_key_word = {"var"}
+get_key_word = {"get"}
+set_key_word = {"set"}
+await_key_word = {"await"}
 left_parenthesis = {"("}
 right_parenthesis = {")"}
 left_bracers = {"{"}
@@ -30,16 +37,25 @@ char = {
     | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-identifier = {(ASCII_ALPHA)+ ~ (ASCII_DIGIT | ASCII_ALPHA)*}
+identifier = @{"_"? ~ (ASCII_ALPHA)+ ~ (ASCII_DIGIT | ASCII_ALPHA)*}
 math_op = {">" | ">=" | "<" | "<=" | "!=" | "==" | "*"}
 bool_op = {"&&" | "||"}
-new_instance = {new_key_word ~ identifier ~ left_parenthesis ~ parameters ~ right_parenthesis ~ semicolon}
-code = {if_exp? ~ return_key_word ~ new_instance}
-return_type = {"ActionResult" ~ "<" ~ (string_key_word | int_key_word | identifier) ~ ">"}
+new_instance = {new_key_word ~ identifier ~ left_parenthesis ~ parameters? ~ right_parenthesis ~ semicolon}
+method = {"." ~ identifier ~ left_parenthesis ~ parameters? ~ right_parenthesis}
+method_call = {(identifier ~ method ~ semicolon)}
+async_method_call = {(await_key_word ~ identifier ~ method ~ semicolon)}
+assignment = {var_key_word? ~ identifier ~ "=" ~ ((await_key_word | identifier | number | string | char) ~ identifier? ~ method? ~ semicolon)}
+code = {if_exp? ~ method_call* ~ async_method_call* ~ assignment* ~ (return_key_word ~ new_instance)*}
+return_type = {("ActionResult" | "IActionResult")}
 async_return_type = {async_key_word ~ "Task<" ~ return_type ~ ">"}
 parameter = {(string | identifier | math_exp)}
 parameters = {(parameter ~ (",")?)+}
 action_parameter = {(string_key_word | int_key_word | identifier) ~ identifier}
 action_parameters = {(action_parameter ~ (",")?)+}
 action = {attribute? ~ public_key_word ~ (async_return_type | return_type) ~ identifier ~ left_parenthesis ~ action_parameters* ~ right_parenthesis ~ left_bracers ~ code ~ right_bracers}
-class_code = {attribute* ~ public_key_word ~ class_key_word ~ identifier ~ (":" ~ identifier)? ~ left_bracers ~ action ~ right_bracers}
+property_type = {string_key_word | int_key_word | decimal_key_word | identifier}
+constructor_parameter = {(string_key_word | int_key_word | identifier) ~ identifier}
+constructor_parameters = {(constructor_parameter ~ (",")?)+}
+constructor = {public_key_word ~ identifier ~ left_parenthesis ~ constructor_parameters ~ right_parenthesis ~ left_bracers ~ code ~ right_bracers}
+properties = {attribute? ~ (public_key_word | private_key_word) ~ readonly_key_word ~ property_type ~ identifier ~ (semicolon | (left_bracers ~ get_key_word ~ semicolon ~ set_key_word ~ semicolon ~ right_bracers))}
+class_code = {attribute* ~ public_key_word ~ class_key_word ~ identifier ~ (":" ~ identifier)? ~ left_bracers ~ properties* ~ constructor ~ action+ ~ right_bracers}

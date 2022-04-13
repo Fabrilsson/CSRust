@@ -8,11 +8,11 @@ use std::fs::File;
 use pest::iterators::Pair;
 
 #[derive(Parser)]
-#[grammar = "CS.pest"]
+#[grammar = "Controllers.pest"]
 pub struct CSParser;
 
 fn main() {
-    let contents = fs::read_to_string("ApiController.cs")
+    let contents = fs::read_to_string("/home/fabrilsson/Documents/repo/CSharpSandbox/GroceriesApi/Controllers/GroceriesController.cs")
     .expect("Something went wrong reading the file");
 
     let text = contents.replace("\u{feff}", "");
@@ -51,11 +51,29 @@ fn match_pairs(iter: Pair<Rule>) {
 fn match_class_code_pairs(iter: Pair<Rule>){
     for elem in iter.into_inner() {
         match elem.as_rule(){
+            Rule::constructor => match_constructor_pairs(elem),
             Rule::action => match_action_pairs(elem),
+            Rule::properties => println!("teste2:  {}", elem.as_str()),
             Rule::attribute => println!("teste2:  {}", elem.as_str()),
             Rule::public_key_word => println!("teste2:  {}", elem.as_str()),
             Rule::class_key_word => println!("teste2:  {}", elem.as_str()),
             Rule::identifier => println!("teste2:  {}", elem.as_str()),
+            Rule::left_bracers => println!("teste2:  {}", elem.as_str()),
+            Rule::right_bracers => println!("teste2:  {}", elem.as_str()),
+            _ => unreachable!()
+        }
+    }
+}
+
+fn match_constructor_pairs(iter: Pair<Rule>){
+    for elem in iter.into_inner() {
+        match elem.as_rule(){
+            Rule::constructor_parameters => match_parameters_pairs(elem),
+            Rule::code => match_code_pairs(elem),
+            Rule::public_key_word => println!("teste2:  {}", elem.as_str()),
+            Rule::identifier => println!("teste2:  {}", elem.as_str()),
+            Rule::left_parenthesis => println!("teste2:  {}", elem.as_str()),
+            Rule::right_parenthesis => println!("teste2:  {}", elem.as_str()),
             Rule::left_bracers => println!("teste2:  {}", elem.as_str()),
             Rule::right_bracers => println!("teste2:  {}", elem.as_str()),
             _ => unreachable!()
@@ -68,7 +86,7 @@ fn match_action_pairs(iter: Pair<Rule>){
         match elem.as_rule(){
             Rule::action_parameters => match_parameters_pairs(elem),
             Rule::code => match_code_pairs(elem),
-            Rule::attribute => println!("teste2:  {}", elem.as_str()),
+            Rule::attribute => if elem.as_str() != "[HttpGet]" {return} else {println!("teste2:  {}", elem.as_str())},
             Rule::public_key_word => println!("teste2:  {}", elem.as_str()),
             Rule::return_type => println!("teste2:  {}", elem.as_str()),
             Rule::async_return_type => println!("teste2:  {}", elem.as_str()),
@@ -86,10 +104,10 @@ fn match_code_pairs(iter: Pair<Rule>){
     for elem in iter.into_inner() {
         match elem.as_rule(){
             Rule::new_instance => match_new_instance_pairs(elem),
+            Rule::method_call => println!("teste2:  {}", elem.as_str()),
+            Rule::async_method_call => println!("teste2:  {}", elem.as_str()),
+            Rule::assignment => println!("teste2:  {}", elem.as_str()),
             Rule::return_key_word => println!("teste2:  {}", elem.as_str()),
-            Rule::identifier => println!("teste2:  {}", elem.as_str()),
-            Rule::left_parenthesis => println!("teste2:  {}", elem.as_str()),
-            Rule::right_parenthesis => println!("teste2:  {}", elem.as_str()),
             _ => unreachable!()
         }
     }
@@ -100,6 +118,7 @@ fn match_parameters_pairs(iter: Pair<Rule>){
         match elem.as_rule(){
             Rule::parameter => println!("teste2:  {}", elem.as_str()),
             Rule::action_parameter => println!("teste2:  {}", elem.as_str()),
+            Rule::constructor_parameter => println!("teste2:  {}", elem.as_str()),
             _ => unreachable!()
         }
     }
