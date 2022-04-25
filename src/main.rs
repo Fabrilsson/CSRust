@@ -169,7 +169,7 @@ fn match_class_models_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step)
                 {
                     code.add_type_or_struct(String::from("struct "));
                 },
-                Rule::identifier => 
+                Rule::identifier =>
                 {
                     code.add_type_or_struct(String::from(elem.as_str()));
                 },
