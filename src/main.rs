@@ -59,7 +59,7 @@ fn main() {
 
     parse_models_contents(&mut code, &Step::models);
 
-    parse_repository_contents(&mut code, &Step::models);
+    //parse_repository_contents(&mut code, &Step::repositories);
 
     write_all_to_file(&mut code);
 
@@ -69,7 +69,7 @@ fn main() {
 
 fn parse_models_contents(code: &mut Code, step: &Step) {
 
-    let contents = read_files().expect("Error");
+    let contents = read_files("/home/fabrilsson/Documents/repo/CSharpSandbox/GroceriesApi/Models/").expect("Error");
 
     for models_contents in contents {
 
@@ -91,38 +91,27 @@ fn parse_models_contents(code: &mut Code, step: &Step) {
     }
 }
 
-fn read_files() -> std::io::Result<Vec<String>> {
-    let mut files_contents: Vec<String> = Vec::new();
-
-    for entry in fs::read_dir("/home/fabrilsson/Documents/repo/CSharpSandbox/GroceriesApi/Models/")? {
-        let entry = entry?;
-        let path = entry.path();
-
-        let content = fs::read_to_string(path).expect("Error");
-        files_contents.push(content);
-    }
-
-    Ok(files_contents)
-}
-
 fn parse_repository_contents(code: &mut Code, step: &Step) {
-    let controller_contents = fs::read_to_string("/home/fabrilsson/Documents/repo/CSharpSandbox/GroceriesApi/Repositories/GroceriesRepository.cs")
-    .expect("Something went wrong reading the file");
 
-    let text = controller_contents.replace("\u{feff}", "");
+    let contents = read_files("/home/fabrilsson/Documents/repo/CSharpSandbox/GroceriesApi/Repositories/").expect("Error");
 
-    println!("With text:\n{}", controller_contents);
+    for models_contents in contents {
 
-    let successful_parse = CSParser::parse(Rule::parse_repository_contents, &text).unwrap_or_else(|e| panic!("{}", e));
+        let text = models_contents.replace("\u{feff}", "");
 
-    println!("{:?}", successful_parse);
+        println!("With text:\n{}", models_contents);
 
-    for pair in successful_parse {
-        println!("Rule:    {:?}", pair.as_rule());
-        println!("Span:    {:?}", pair.as_span());
-        println!("Text:    {}", pair.as_str());
+        let successful_parse = CSParser::parse(Rule::parse_models_contents, &text).unwrap_or_else(|e| panic!("{}", e));
 
-        match_pairs(pair, code, step);
+        println!("{:?}", successful_parse);
+
+        for pair in successful_parse {
+            println!("Rule:    {:?}", pair.as_rule());
+            println!("Span:    {:?}", pair.as_span());
+            println!("Text:    {}", pair.as_str());
+
+            match_pairs(pair, code, step);
+        }
     }
 }
 
@@ -148,6 +137,24 @@ fn parse_controller_contents(code: &mut Code, step: &Step) {
     }
 }
 
+fn read_files(path: &str) -> std::io::Result<Vec<String>> {
+    let mut files_contents: Vec<String> = Vec::new();
+
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        let content = fs::read_to_string(path).expect("Error");
+
+        if !content.contains("interface")
+        {
+            files_contents.push(content);
+        }
+    }
+
+    Ok(files_contents)
+}
+
 fn match_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step) {
 
     for elem in iter.into_inner() {
@@ -167,6 +174,9 @@ fn match_namespace_code_block(iter: Pair<Rule>, code: &mut Code, step: &Step) {
             {
                 if *step == Step::models {
                     match_class_models_code_pairs(elem, code, step)
+                }
+                else if *step == Step::repositories {
+                    match_repositories_code_pairs(elem, code, step)
                 }
                 else {
                     match_class_code_pairs(elem, code, step)
@@ -197,6 +207,45 @@ fn match_using_code_block(iter: Pair<Rule>, step: &Step) {
 }
 
 fn match_class_models_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step){
+
+    let mut class_name: &str = "";
+
+    if *step == Step::models {
+        for elem in iter.into_inner() {
+            match elem.as_rule(){
+                Rule::constructor => match_constructor_pairs(elem),
+                Rule::action => match_action_pairs(elem),
+                Rule::properties => match_properties_pairs(elem, code, step, class_name),
+                Rule::attribute => println!("teste2:  {}", elem.as_str()),
+                Rule::public_key_word => 
+                {
+                    code.add_struct("\n#[derive(Debug, Deserialize, Serialize, Clone)] \n");
+                    code.add_struct("pub ");
+                },
+                Rule::class_key_word => 
+                {
+                    code.add_struct("struct ");
+                },
+                Rule::identifier =>
+                {
+                    code.add_struct(elem.as_str());
+                    class_name = elem.as_str();
+                },
+                Rule::left_bracers => 
+                {
+                    code.add_struct("\n{\n");
+                },
+                Rule::right_bracers => 
+                {
+                    code.add_struct("}\n");
+                },
+                _ => unreachable!()
+            }
+        }
+    }
+}
+
+fn match_repositories_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step){
 
     let mut class_name: &str = "";
 
