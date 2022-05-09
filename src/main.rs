@@ -6,7 +6,7 @@ use pest::Parser;
 use std::fs::{self, File};
 use std::io::Write;
 use pest::iterators::Pair;
-use std::io::Read;
+use std::collections::HashMap;
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -16,7 +16,8 @@ struct Code {
     usings: Vec<String>,
     types: Vec<String>,
     structs: Vec<String>,
-    methods: Vec<String>
+    methods: Vec<String>,
+    methods_parameters: Vec<String>
 }
 
 impl Code {
@@ -25,7 +26,8 @@ impl Code {
             usings: Vec::new(),
             types: Vec::new(),
             structs: Vec::new(),
-            methods: Vec::new()
+            methods: Vec::new(),
+            methods_parameters: Vec::new()
         }
     }
 
@@ -44,6 +46,14 @@ impl Code {
     fn add_method(&mut self, value: String){
         self.methods.push(value);
     }
+
+    fn add_method_parameter(&mut self, value: String){
+        self.methods_parameters.push(value);
+    }
+
+    fn get_method_parameters(&mut self) -> String {
+        String::from(self.methods_parameters.pop().expect("error on getting method parameter"))
+    }
 }
 
 #[derive(PartialEq)]
@@ -57,9 +67,15 @@ fn main() {
 
     let mut code = Code::new();
 
+    code.add_using(String::from("use warp::{http, Filter};\n"));
+    code.add_using(String::from("use parking_lot::RwLock;\n"));
+    code.add_using(String::from("use std::collections::HashMap;\n"));
+    code.add_using(String::from("use std::sync::Arc;\n"));
+    code.add_using(String::from("use serde::{Serialize, Deserialize};\n\n"));
+
     parse_models_contents(&mut code, &Step::models);
 
-    //parse_repository_contents(&mut code, &Step::repositories);
+    parse_repository_contents(&mut code, &Step::repositories);
 
     write_all_to_file(&mut code);
 
@@ -93,25 +109,23 @@ fn parse_models_contents(code: &mut Code, step: &Step) {
 
 fn parse_repository_contents(code: &mut Code, step: &Step) {
 
-    let contents = read_files("/home/fabrilsson/Documents/repo/CSharpSandbox/GroceriesApi/Repositories/").expect("Error");
+    let models_contents = fs::read_to_string("/home/fabrilsson/Documents/repo/CSharpSandbox/GroceriesApi/Repositories/GroceriesRepository.cs")
+    .expect("Something went wrong reading the file");
 
-    for models_contents in contents {
+    let text = models_contents.replace("\u{feff}", "");
 
-        let text = models_contents.replace("\u{feff}", "");
+    println!("With text:\n{}", models_contents);
 
-        println!("With text:\n{}", models_contents);
+    let successful_parse = CSParser::parse(Rule::parse_models_contents, &text).unwrap_or_else(|e| panic!("{}", e));
 
-        let successful_parse = CSParser::parse(Rule::parse_models_contents, &text).unwrap_or_else(|e| panic!("{}", e));
+    println!("{:?}", successful_parse);
 
-        println!("{:?}", successful_parse);
+    for pair in successful_parse {
+        println!("Rule:    {:?}", pair.as_rule());
+        println!("Span:    {:?}", pair.as_span());
+        println!("Text:    {}", pair.as_str());
 
-        for pair in successful_parse {
-            println!("Rule:    {:?}", pair.as_rule());
-            println!("Span:    {:?}", pair.as_span());
-            println!("Text:    {}", pair.as_str());
-
-            match_pairs(pair, code, step);
-        }
+        match_pairs(pair, code, step);
     }
 }
 
@@ -160,7 +174,7 @@ fn match_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step) {
     for elem in iter.into_inner() {
         match elem.as_rule() {
             Rule::namespace_code_block => match_namespace_code_block(elem, code, step),
-            Rule::using_code_block => match_using_code_block(elem, step),
+            Rule::using_code_block => match_using_code_block(elem),
             _ => unreachable!()
         };
     }
@@ -191,16 +205,13 @@ fn match_namespace_code_block(iter: Pair<Rule>, code: &mut Code, step: &Step) {
     }
 }
 
-fn match_using_code_block(iter: Pair<Rule>, step: &Step) {
-
-    if *step == Step::models {
-        return;
-    }
+fn match_using_code_block(iter: Pair<Rule>) {
 
     for elem in iter.into_inner() {
         match elem.as_rule() {
             Rule::using_key_word => println!("teste2:  {}", elem.as_str()),
-            Rule::identifier => println!("teste2:  {}", elem.as_str()),            
+            Rule::identifier => println!("teste2:  {}", elem.as_str()),
+            Rule::semicolon => println!("teste2:  {}", elem.as_str()),
             _ => unreachable!()
         };
     }
@@ -213,8 +224,8 @@ fn match_class_models_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step)
     if *step == Step::models {
         for elem in iter.into_inner() {
             match elem.as_rule(){
-                Rule::constructor => match_constructor_pairs(elem),
-                Rule::action => match_action_pairs(elem),
+                Rule::constructor => match_constructor_pairs(elem, code, step),
+                Rule::action => match_action_pairs(elem, code, step),
                 Rule::properties => match_properties_pairs(elem, code, step, class_name),
                 Rule::attribute => println!("teste2:  {}", elem.as_str()),
                 Rule::public_key_word => 
@@ -249,35 +260,20 @@ fn match_repositories_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step)
 
     let mut class_name: &str = "";
 
-    if *step == Step::models {
+    if *step == Step::repositories {
         for elem in iter.into_inner() {
             match elem.as_rule(){
-                Rule::constructor => match_constructor_pairs(elem),
-                Rule::action => match_action_pairs(elem),
+                Rule::public_key_word => println!("teste2:  {}", elem.as_str()),
+                Rule::class_key_word => println!("teste2:  {}", elem.as_str()),
                 Rule::properties => match_properties_pairs(elem, code, step, class_name),
-                Rule::attribute => println!("teste2:  {}", elem.as_str()),
-                Rule::public_key_word => 
-                {
-                    code.add_struct("\n#[derive(Debug, Deserialize, Serialize, Clone)] \n");
-                    code.add_struct("pub ");
-                },
-                Rule::class_key_word => 
-                {
-                    code.add_struct("struct ");
-                },
                 Rule::identifier =>
                 {
-                    code.add_struct(elem.as_str());
+                    //code.add_struct(elem.as_str());
                     class_name = elem.as_str();
                 },
-                Rule::left_bracers => 
-                {
-                    code.add_struct("\n{\n");
-                },
-                Rule::right_bracers => 
-                {
-                    code.add_struct("}\n");
-                },
+                Rule::left_bracers => println!("teste2:  {}", elem.as_str()),
+                Rule::right_bracers => println!("teste2:  {}", elem.as_str()),
+                Rule::action => match_action_pairs(elem, code, step),
                 _ => unreachable!()
             }
         }
@@ -286,7 +282,7 @@ fn match_repositories_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step)
 
 fn match_properties_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, class_name: &str) {
 
-    let mut property_type = vec!();
+    let mut property_type: String = String::from("");
 
     let mut create_hashmap: bool = false;
 
@@ -300,24 +296,27 @@ fn match_properties_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, class_
             },
             Rule::public_key_word => 
             {
-                code.add_struct("   pub ");
+                if *step == Step::models{
+                    code.add_struct("   pub ");
+                }
             },
             Rule::private_key_word => 
             {
-                code.add_struct("   pub ");
+                if *step == Step::models{
+                    code.add_struct("   pub ");
+                }
             },
-            Rule::property_type => property_type.push(elem.as_str()),
+            Rule::static_key_word => {},
+            Rule::readonly_key_word => println!("teste2:  {}", elem.as_str()),
+            Rule::assignment => match_assignment_code_pairs(elem, code, step, &property_type),
+            Rule::property_type => { property_type = match_property_type_code_pairs(elem, code, step) },
             Rule::identifier => 
             {
-                let prop_type = property_type.pop().unwrap_or("<not_found>");
-
-                let processed_prop_type = get_equivalent_rust_type(prop_type);
-
-                if create_hashmap{
-                    code.add_type(&format!("type {}s = HaspMap<{}, {}>;\n", class_name, processed_prop_type, class_name));
+                if create_hashmap {
+                    code.add_type(&format!("type {}s = HaspMap<{}, {}>;\n", class_name, property_type, class_name));
                 }
 
-                code.add_struct(&format!("{}: {},\n", elem.as_str().to_lowercase(), processed_prop_type));
+                code.add_struct(&format!("{}: {},\n", elem.as_str().to_lowercase(), property_type));
 
                 return;
             },
@@ -329,8 +328,8 @@ fn match_properties_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, class_
 fn match_class_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step) {
     for elem in iter.into_inner() {
         match elem.as_rule(){
-            Rule::constructor => match_constructor_pairs(elem),
-            Rule::action => match_action_pairs(elem),
+            Rule::constructor => match_constructor_pairs(elem, code, step),
+            Rule::action => match_action_pairs(elem, code, step),
             Rule::properties => println!("teste2:  {}", elem.as_str()),
             Rule::attribute => println!("teste2:  {}", elem.as_str()),
             Rule::public_key_word => println!("teste2:  {}", elem.as_str()),
@@ -343,11 +342,11 @@ fn match_class_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step) {
     }
 }
 
-fn match_constructor_pairs(iter: Pair<Rule>){
+fn match_constructor_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step){
     for elem in iter.into_inner() {
         match elem.as_rule(){
             Rule::constructor_parameters => match_parameters_pairs(elem),
-            Rule::code => match_code_pairs(elem),
+            Rule::code => match_code_pairs(elem, code, step),
             Rule::public_key_word => println!("teste2:  {}", elem.as_str()),
             Rule::identifier => println!("teste2:  {}", elem.as_str()),
             Rule::left_parenthesis => println!("teste2:  {}", elem.as_str()),
@@ -359,16 +358,36 @@ fn match_constructor_pairs(iter: Pair<Rule>){
     }
 }
 
-fn match_action_pairs(iter: Pair<Rule>){
+fn match_action_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step){
+
+    let mut return_type = "";
+
     for elem in iter.into_inner() {
         match elem.as_rule(){
             Rule::action_parameters => match_parameters_pairs(elem),
-            Rule::code => match_code_pairs(elem),
+            Rule::code => match_code_pairs(elem, code, step),
             Rule::attribute => if elem.as_str() != "[HttpGet]" {return} else {println!("teste2:  {}", elem.as_str())},
             Rule::public_key_word => println!("teste2:  {}", elem.as_str()),
             Rule::action_return_type => println!("teste2:  {}", elem.as_str()),
             Rule::action_async_return_type => println!("teste2:  {}", elem.as_str()),
-            Rule::identifier => println!("teste2:  {}", elem.as_str()),
+            Rule::method_return_type => {if *step == Step::repositories { return_type = "Result<impl warp::Reply, warp::Rejection>" }},
+            Rule::identifier => {
+                if *step == Step::repositories{
+
+                    if !elem.as_str().contains("Get"){
+                        return;
+                    }
+
+                    let parameters = code.get_method_parameters();
+
+                    let parameter1 = String::from(&parameters);
+                    let parameter2 = String::from(&parameters);
+
+                    code.add_method_parameter(parameter1);
+
+                    code.add_method(String::from(format!("async fn {} ({}) -> {}", elem.as_str().to_lowercase(), String::from(parameter2), return_type)));
+                }
+            },
             Rule::left_parenthesis => println!("teste2:  {}", elem.as_str()),
             Rule::right_parenthesis => println!("teste2:  {}", elem.as_str()),
             Rule::left_bracers => println!("teste2:  {}", elem.as_str()),
@@ -378,7 +397,7 @@ fn match_action_pairs(iter: Pair<Rule>){
     }
 }
 
-fn match_code_pairs(iter: Pair<Rule>){
+fn match_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step){
     for elem in iter.into_inner() {
         match elem.as_rule(){
             Rule::new_instance => match_new_instance_pairs(elem),
@@ -386,6 +405,22 @@ fn match_code_pairs(iter: Pair<Rule>){
             Rule::async_method_call => println!("teste2:  {}", elem.as_str()),
             Rule::assignment => println!("teste2:  {}", elem.as_str()),
             Rule::return_key_word => println!("teste2:  {}", elem.as_str()),
+            Rule::property_call => {
+
+                let parameters = code.get_method_parameters();
+
+                let split_parameters: Vec<&str> = parameters.split(":").collect();
+
+                code.add_method(String::from(format!(" {}\n    let mut result = HashMap::new();\n
+    let r = {}.items.read();
+    for (key,value) in r.iter() {}
+        result.insert(key, value);
+    {}
+
+    Ok(warp::reply::json(&result))
+{}\n", "{", split_parameters[0], "{", "}", "}")))
+            },
+            Rule::semicolon => println!("teste2:  {}", elem.as_str()),
             _ => unreachable!()
         }
     }
@@ -416,22 +451,66 @@ fn match_new_instance_pairs(iter: Pair<Rule>){
     }
 }
 
-fn get_equivalent_rust_type(value: &str) -> &str {
+fn match_assignment_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, property_type: &String) {
+    for elem in iter.into_inner() {
+        match elem.as_rule(){
+            Rule::property_call => {
+
+                let processed_prop_type = get_equivalent_rust_type(property_type);
+
+                if processed_prop_type != "<not_found>" && processed_prop_type != "i32" {
+                    code.add_struct(&format!("\nimpl {} {} \n", processed_prop_type, "{"));
+                    code.add_method_parameter(String::from(&format!("{}: {}", processed_prop_type.to_lowercase(), processed_prop_type)));
+                }
+            },
+            Rule::new_instance => {
+                code.add_struct(&format!("\tfn new() -> Self {}\n\t\t {} {} \n\t\t\titems: Arc::new(RwLock::new(HashMap::new()))\n\t\t{}\n\t{}\n{}\n\n", "{", property_type, "{", "}", "}", "}"))
+            },
+            Rule::number => println!("teste2:  {}", elem.as_str()),
+            Rule::semicolon => println!("teste2:  {}", elem.as_str()),
+            _ => unreachable!()
+        }
+    }
+}
+
+fn match_property_type_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step) -> String {
+
+    let mut propety_type = "";
+
+    for elem in iter.into_inner() {
+        match elem.as_rule(){
+            Rule::string_key_word => { propety_type = "String" },
+            Rule::int_key_word => { propety_type = "i32" },
+            Rule::decimal_key_word => { propety_type = "f64" },
+            Rule::list_type => { propety_type = "Arc<RwLock<Items>>" },
+            Rule::identifier => { propety_type = elem.as_str() },
+            _ => unreachable!()
+        }
+    }
+
+    return String::from(propety_type);
+}
+
+fn get_equivalent_rust_type(value: &String) -> &'static str {
     
-    if value == "int"{
+    if *value == "int"{
         return "i32";
     }
 
-    if value == "string"{
+    if *value == "string"{
         return "String";
     }
 
-    if value == "decimal"{
+    if *value == "decimal"{
         return "f64";
     }
 
-    if value == "List<Item>"{
+    if *value == "List<Item>"{
         return "Arc<RwLock<Items>>";
+    }
+
+    if *value == "Store"{
+        return "Store";
     }
 
     return "<not_found>";
