@@ -20,6 +20,45 @@ struct Code {
     methods_parameters: Vec<String>
 }
 
+struct TypeTable {
+    types: Vec<Type>
+}
+
+#[derive(Debug)]
+struct Type {
+    name: String,
+    type_name: String,
+    rule: Rule,
+    properties: Vec<Type>
+}
+
+impl TypeTable {
+    fn new() -> Self {
+        TypeTable {
+            types: Vec::new()
+        }
+    }
+
+    fn add_type(&mut self, t: Type) {
+        self.types.push(t);
+    }
+
+    fn get_type() {
+
+    }
+}
+
+impl Type {
+    fn new(name: String, type_name: String, rule: Rule, properties: Vec<Type>) -> Self {
+        Type {
+            name: name,
+            type_name: type_name,
+            rule: rule,
+            properties: properties
+        }
+    }
+}
+
 impl Code {
     fn new() -> Self {
         Code {
@@ -56,7 +95,7 @@ impl Code {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum Step {
     models,
     repositories,
@@ -67,23 +106,31 @@ fn main() {
 
     let mut code = Code::new();
 
+    let mut type_table = TypeTable::new();
+
+    // type_table.add_type(Type {name: String::from("teste"), rule: Rule::assignment, properties: Vec::new()});
+
+    // let asdasd: Vec<Type> = type_table.types.into_iter().filter(|i| i.name == "teste").collect();
+
+    // println!("asdasdasdad {}", asdasd.first().expect("").name);
+
     code.add_using(String::from("use warp::{http, Filter};\n"));
     code.add_using(String::from("use parking_lot::RwLock;\n"));
     code.add_using(String::from("use std::collections::HashMap;\n"));
     code.add_using(String::from("use std::sync::Arc;\n"));
     code.add_using(String::from("use serde::{Serialize, Deserialize};\n\n"));
 
-    parse_models_contents(&mut code, &Step::models);
+    parse_models_contents(&mut code, &Step::models, &mut type_table);
 
-    parse_repository_contents(&mut code, &Step::repositories);
+    parse_repository_contents(&mut code, &Step::repositories, &mut type_table);
 
-    write_all_to_file(&mut code);
+    write_all_to_file(&mut code, &mut type_table);
 
     //parse_controller_contents();
 
 }
 
-fn parse_models_contents(code: &mut Code, step: &Step) {
+fn parse_models_contents(code: &mut Code, step: &Step, types: &mut TypeTable) {
 
     let contents = read_files("/home/fabrilsson/Documents/repo/CSharpSandbox/GroceriesApi/Models/").expect("Error");
 
@@ -102,12 +149,12 @@ fn parse_models_contents(code: &mut Code, step: &Step) {
             println!("Span:    {:?}", pair.as_span());
             println!("Text:    {}", pair.as_str());
 
-            match_pairs(pair, code, step);
+            match_pairs(pair, code, step, types);
         }
     }
 }
 
-fn parse_repository_contents(code: &mut Code, step: &Step) {
+fn parse_repository_contents(code: &mut Code, step: &Step, types: &mut TypeTable) {
 
     let models_contents = fs::read_to_string("/home/fabrilsson/Documents/repo/CSharpSandbox/GroceriesApi/Repositories/GroceriesRepository.cs")
     .expect("Something went wrong reading the file");
@@ -125,11 +172,11 @@ fn parse_repository_contents(code: &mut Code, step: &Step) {
         println!("Span:    {:?}", pair.as_span());
         println!("Text:    {}", pair.as_str());
 
-        match_pairs(pair, code, step);
+        match_pairs(pair, code, step, types);
     }
 }
 
-fn parse_controller_contents(code: &mut Code, step: &Step) {
+fn parse_controller_contents(code: &mut Code, step: &Step, types: &mut TypeTable) {
 
     let controller_contents = fs::read_to_string("/home/fabrilsson/Documents/repo/CSharpSandbox/GroceriesApi/Controllers/GroceriesController.cs")
     .expect("Something went wrong reading the file");
@@ -147,7 +194,7 @@ fn parse_controller_contents(code: &mut Code, step: &Step) {
         println!("Span:    {:?}", pair.as_span());
         println!("Text:    {}", pair.as_str());
 
-        match_pairs(pair, code, step);
+        match_pairs(pair, code, step, types);
     }
 }
 
@@ -169,28 +216,28 @@ fn read_files(path: &str) -> std::io::Result<Vec<String>> {
     Ok(files_contents)
 }
 
-fn match_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step) {
+fn match_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, types: &mut TypeTable) {
 
     for elem in iter.into_inner() {
         match elem.as_rule() {
-            Rule::namespace_code_block => match_namespace_code_block(elem, code, step),
+            Rule::namespace_code_block => match_namespace_code_block(elem, code, step, types),
             Rule::using_code_block => match_using_code_block(elem),
             _ => unreachable!()
         };
     }
 }
 
-fn match_namespace_code_block(iter: Pair<Rule>, code: &mut Code, step: &Step) {
+fn match_namespace_code_block(iter: Pair<Rule>, code: &mut Code, step: &Step, types: &mut TypeTable) {
 
     for elem in iter.into_inner() {
         match elem.as_rule() {
             Rule::class_code => 
             {
                 if *step == Step::models {
-                    match_class_models_code_pairs(elem, code, step)
+                    match_class_models_code_pairs(elem, code, step, types)
                 }
                 else if *step == Step::repositories {
-                    match_repositories_code_pairs(elem, code, step)
+                    match_repositories_code_pairs(elem, code, step, types)
                 }
                 else {
                     match_class_code_pairs(elem, code, step)
@@ -217,7 +264,7 @@ fn match_using_code_block(iter: Pair<Rule>) {
     }
 }
 
-fn match_class_models_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step){
+fn match_class_models_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, types: &mut TypeTable){
 
     let mut class_name: &str = "";
 
@@ -226,7 +273,7 @@ fn match_class_models_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step)
             match elem.as_rule(){
                 Rule::constructor => match_constructor_pairs(elem, code, step),
                 Rule::action => match_action_pairs(elem, code, step),
-                Rule::properties => match_properties_pairs(elem, code, step, class_name),
+                Rule::properties => match_properties_pairs(elem, code, step, class_name, types),
                 Rule::attribute => println!("teste2:  {}", elem.as_str()),
                 Rule::public_key_word => 
                 {
@@ -256,7 +303,7 @@ fn match_class_models_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step)
     }
 }
 
-fn match_repositories_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step){
+fn match_repositories_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, types: &mut TypeTable){
 
     let mut class_name: &str = "";
 
@@ -265,7 +312,7 @@ fn match_repositories_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step)
             match elem.as_rule(){
                 Rule::public_key_word => println!("teste2:  {}", elem.as_str()),
                 Rule::class_key_word => println!("teste2:  {}", elem.as_str()),
-                Rule::properties => match_properties_pairs(elem, code, step, class_name),
+                Rule::properties => match_properties_pairs(elem, code, step, class_name, types),
                 Rule::identifier =>
                 {
                     //code.add_struct(elem.as_str());
@@ -280,11 +327,13 @@ fn match_repositories_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step)
     }
 }
 
-fn match_properties_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, class_name: &str) {
+fn match_properties_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, class_name: &str, types: &mut TypeTable) {
 
-    let mut property_type: String = String::from("");
+    let mut property_type: Vec<String> = Vec::new();
 
     let mut create_hashmap: bool = false;
+
+    let mut properties: Vec<Type> = Vec::new();
 
     for elem in iter.into_inner() {
         match elem.as_rule(){
@@ -308,20 +357,31 @@ fn match_properties_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, class_
             },
             Rule::static_key_word => {},
             Rule::readonly_key_word => println!("teste2:  {}", elem.as_str()),
-            Rule::assignment => match_assignment_code_pairs(elem, code, step, &property_type),
-            Rule::property_type => { property_type = match_property_type_code_pairs(elem, code, step) },
+            Rule::assignment => match_assignment_code_pairs(elem, code, step, &property_type.pop().expect("")),
+            Rule::property_type => { match_property_type_code_pairs(elem, code, step, &mut property_type) },
             Rule::identifier => 
             {
+                let prop_type = property_type.pop().expect("");
+
                 if create_hashmap {
-                    code.add_type(&format!("type {}s = HaspMap<{}, {}>;\n", class_name, property_type, class_name));
+                    code.add_type(&format!("type {}s = HaspMap<{}, {}>;\n", class_name, prop_type, class_name));
                 }
 
-                code.add_struct(&format!("{}: {},\n", elem.as_str().to_lowercase(), property_type));
+                code.add_struct(&format!("{}: {},\n", elem.as_str().to_lowercase(), prop_type));
 
-                return;
+                properties.push(Type { name: elem.as_str().to_lowercase(), type_name: prop_type, rule: Rule::identifier, properties: Vec::new() });                
             },
+            Rule::left_bracers => {}
+            Rule::get_key_word => {}
+            Rule::semicolon => {}
+            Rule::set_key_word => {}
+            Rule::right_bracers => {}
             _ => unreachable!()
         }
+    }
+
+    if *step == Step::models {
+        types.add_type(Type { name: String::from(class_name), type_name: String::from(class_name), rule: Rule::identifier, properties: properties })       
     }
 }
 
@@ -384,6 +444,8 @@ fn match_action_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step){
                     let parameter2 = String::from(&parameters);
 
                     code.add_method_parameter(parameter1);
+
+                    //use _context as the name for the struct tu access the store
 
                     code.add_method(String::from(format!("async fn {} ({}) -> {}", elem.as_str().to_lowercase(), String::from(parameter2), return_type)));
                 }
@@ -473,7 +535,7 @@ fn match_assignment_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, p
     }
 }
 
-fn match_property_type_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step) -> String {
+fn match_property_type_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, test: &mut Vec<String>) {
 
     let mut propety_type = "";
 
@@ -488,7 +550,7 @@ fn match_property_type_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step
         }
     }
 
-    return String::from(propety_type);
+    test.push(String::from(propety_type));
 }
 
 fn get_equivalent_rust_type(value: &String) -> &'static str {
@@ -516,7 +578,7 @@ fn get_equivalent_rust_type(value: &String) -> &'static str {
     return "<not_found>";
 }
 
-fn write_all_to_file(code: &mut Code) {
+fn write_all_to_file(code: &mut Code, types: &mut TypeTable) {
     let mut f = File::create("/home/fabrilsson/Documents/repo/CSRust/output.rs")
     .expect("Something went wrong reading the file");
 
@@ -534,5 +596,9 @@ fn write_all_to_file(code: &mut Code) {
 
     for elem in &code.methods {
         f.write_all(elem.as_bytes()).expect("Something went wrong reading the file");
+    }
+
+    for elem in &types.types {
+        println!("{:?}", elem);
     }
 }
