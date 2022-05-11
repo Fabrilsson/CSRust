@@ -29,10 +29,10 @@ impl Store {
 	}
 }
 
-async fn getitemsasync (store: Store) -> Result<impl warp::Reply, warp::Rejection> {
+async fn getitemsasync (_context: Store) -> Result<impl warp::Reply, warp::Rejection> {
     let mut result = HashMap::new();
 
-    let r = store.items.read();
+    let r = _context.items.read();
     for (key,value) in r.iter() {
         result.insert(key, value);
     }
