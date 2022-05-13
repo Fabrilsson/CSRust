@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use serde::{Serialize, Deserialize};
 
-type Items = HaspMap<i32, Item>;
+type Items = Vec<Item>;
 
 #[derive(Debug, Deserialize, Serialize, Clone)] 
 pub struct Item
@@ -16,26 +16,26 @@ pub struct Item
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)] 
-pub struct Store
+pub struct DbContext
 {
    pub items: Arc<RwLock<Items>>,
 }
 
-impl Store { 
+impl DbContext { 
 	fn new() -> Self {
-		 Store { 
+		 DbContext { 
 			items: Arc::new(RwLock::new(HashMap::new()))
 		}
 	}
 }
 
-async fn getitemsasync (_context: Store) -> Result<impl warp::Reply, warp::Rejection> {
-    let mut result = HashMap::new();
+async fn getitemsasync (_context: DbContext) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut result = Vec::new();
 
     let r = _context.items.read();
-    for (key,value) in r.iter() {
-        result.insert(key, value);
+    for value in r.iter() {
+        result.push(value);
     }
 
-    Ok(warp::reply::json(&result))
+	Ok(warp::reply::json(&result))
 }
