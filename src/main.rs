@@ -397,7 +397,8 @@ fn match_controller_code_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, t
             match elem.as_rule(){
                 Rule::public_key_word => {},
                 Rule::class_key_word => {},
-                Rule::attribute => if elem.as_str() != "[HttpGet]" {return} else {{}},
+                Rule::attribute => if elem.as_str() != "[HttpGet]" {} else {{}},
+                Rule::constructor => {}
                 Rule::properties => { 
                     let property = match_properties_pairs(elem, code, step, class_name);
                     properties.push(property);
@@ -512,22 +513,15 @@ fn match_action_pairs(iter: Pair<Rule>, code: &mut Code, step: &Step, class_name
         match elem.as_rule(){
             Rule::action_parameters => match_parameters_pairs(elem, method_name, &mut parameters),
             Rule::code => match_code_pairs(elem, code, step, class_names[0].trim(), types),
-            Rule::attribute => if elem.as_str() != "[HttpGet]" { return Method::new() } else {{}},
+            Rule::attribute => if elem.as_str() != "[HttpGet]" {} else {{}},
             Rule::public_key_word => {},
             Rule::action_return_type => {},
             Rule::action_async_return_type => {},
             Rule::method_return_type => {},
             Rule::identifier => {
-                if *step == Step::Repositories {
-
-                    if !elem.as_str().contains("Get"){
-                        return Method::new();
-                    }
-
-                    method_name = elem.as_str();
-                    
-                    code.add_method(String::from(format!("async fn {} ", elem.as_str().to_lowercase())));
-                }
+                method_name = elem.as_str();
+                
+                code.add_method(String::from(format!("async fn {} ", elem.as_str().to_lowercase())));
             },
             Rule::left_parenthesis => {},
             Rule::right_parenthesis => {},
