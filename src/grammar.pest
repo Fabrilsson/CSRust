@@ -65,4 +65,5 @@ constructor_parameter = {(string_key_word | int_key_word | identifier) ~ identif
 constructor_parameters = {(constructor_parameter ~ (",")?)+}
 constructor = {public_key_word ~ identifier ~ left_parenthesis ~ constructor_parameters? ~ right_parenthesis ~ left_bracers ~ code ~ right_bracers}
 properties = {attribute? ~ (public_key_word | private_key_word) ~ static_key_word? ~ readonly_key_word? ~ property_type ~ (identifier ~ (semicolon | (left_bracers ~ get_key_word ~ semicolon ~ set_key_word ~ semicolon ~ right_bracers)) | assignment)}
-class_code = {attribute* ~ public_key_word ~ class_key_word ~ identifier ~ (":" ~ identifier)? ~ left_bracers ~ properties* ~ constructor* ~ action* ~ right_bracers}
+class_name = {identifier ~ (":" ~ identifier)?}
+class_code = {attribute* ~ public_key_word ~ class_key_word ~ class_name ~ left_bracers ~ properties* ~ constructor* ~ action* ~ right_bracers}
