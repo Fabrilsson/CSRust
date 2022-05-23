@@ -50,7 +50,7 @@ lambda_expression = {(identifier | char) ~ "=>" ~ property_call ~ "==" ~ propert
 async_method_call = {(await_key_word ~ identifier ~ method_call ~ semicolon)}
 assignment = {var_key_word? ~ property_call ~ "=" ~ (((await_key_word)? ~ (new_instance | number | math_exp | method_call | property_call) ~ semicolon?))}
 property_call = {(identifier ~ "." ~ identifier) | identifier}
-code = {if_exp* ~ method_call* ~ async_method_call* ~ assignment* ~ method_call* ~ (return_key_word ~ (new_instance | property_call))? ~ semicolon?}
+code = {if_exp* ~ method_call* ~ async_method_call* ~ assignment* ~ ((return_key_word ~ (new_instance | property_call)) | method_call)* ~ semicolon?}
 action_return_type = {("ActionResult" | "IActionResult")}
 method_return_type = {(list_type | void_key_word)}
 action_async_return_type = {async_key_word ~ "Task<" ~ action_return_type ~ ">"}

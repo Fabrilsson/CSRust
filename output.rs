@@ -29,23 +29,33 @@ impl DbContext {
 	}
 }
 
-async fn getitemsasyncasdasd (_context: DbContext) -> Result<impl warp::Reply, warp::Rejection> {
-    let mut result = Vec::new();
+async fn get (_context: DbContext) -> Result<impl warp::Reply, warp::Rejection> {
+	let mut result = Vec::new();
 
-    let r = _context.items.read();
-    for value in r.iter() {
-        result.push(value);
-    }
+                        let r = _context.items.read();
+                        for value in r.iter() {
+                        result.push(value);
+                        }
 
 	Ok(warp::reply::json(&result))
 }
 
+
 #[tokio::main]
 async fn main() {
-	let _context = DbContext::new()
+	let _context = DbContext::new();
 	let _context_dbcontext = warp::any().map(move || _context.clone());
 
-	let get_items = warp::get()
-		.and(warp::path("v1"))
-		.and(warp::path("groceries"))
-		.and(warp::path::end())
+	let get = warp::get()
+	.and(warp::path("v1"))
+	.and(warp::path("groceries"))
+	.and(warp::path::end())
+	.and(_context_dbcontext.clone())
+	.and_then(get);
+
+	let routes = get;
+
+	warp::serve(routes)
+		.run(([127, 0, 0, 1], 3030))
+		.await;
+}
