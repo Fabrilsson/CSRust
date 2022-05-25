@@ -1,18 +1,26 @@
 use warp::{http, Filter};
-use parking_lot::RwLock;
-use std::collections::HashMap;
-use std::sync::Arc;
 use serde::{Serialize, Deserialize};
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 type Items = Vec<Item>;
 
-#[derive(Debug, Deserialize, Serialize, Clone)] 
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DbContext
 {
-   pub items: Arc<RwLock<Items>>,
+   pub items: Arc<RwLock<Vec<Item>>>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)] 
+impl DbContext {
+	fn new0() -> Self {
+		DbContext {
+			items: Arc::new(RwLock::new(Vec::new())), 
+		}
+	}
+}
+
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Item
 {
    pub id: i32,
@@ -21,10 +29,13 @@ pub struct Item
    pub value: f64,
 }
 
-impl DbContext { 
-	fn new() -> Self {
-		 DbContext { 
-			items: Arc::new(RwLock::new(HashMap::new()))
+impl Item {
+	fn new0() -> Self {
+		Item {
+			id: 0, 
+			name: String::from(""), 
+			quantity: 0, 
+			value: 0.0, 
 		}
 	}
 }
@@ -43,12 +54,13 @@ async fn get (_context: DbContext) -> Result<impl warp::Reply, warp::Rejection> 
 
 #[tokio::main]
 async fn main() {
-	let _context = DbContext::new();
+	let _context = DbContext::new0();
 	let _context_dbcontext = warp::any().map(move || _context.clone());
 
 	let get = warp::get()
 	.and(warp::path("v1"))
 	.and(warp::path("groceries"))
+	.and(warp::path("get"))
 	.and(warp::path::end())
 	.and(_context_dbcontext.clone())
 	.and_then(get);
