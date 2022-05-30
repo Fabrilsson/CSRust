@@ -3,8 +3,6 @@ use serde::{Serialize, Deserialize};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-type Items = Vec<Item>;
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DbContext
 {
